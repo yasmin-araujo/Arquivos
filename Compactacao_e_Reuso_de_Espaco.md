@@ -1,9 +1,9 @@
 # Compactação e Reuso de Espaço
 
-- [Manipulação de Dados]()
-- [Compactação e Reuso]()
-- [Abordagem Estática]()
-- [Abordagem Dinâmica]()
+- [Manipulação de Dados](https://github.com/yasmin-araujo/Arquivos/blob/master/Compactacao_e_Reuso_de_Espaco.md#manipula%C3%A7%C3%A3o-de-dados)
+- [Compactação e Reuso](https://github.com/yasmin-araujo/Arquivos/blob/master/Compactacao_e_Reuso_de_Espaco.md#compacta%C3%A7%C3%A3o-e-reuso)
+- [Abordagem Estática](https://github.com/yasmin-araujo/Arquivos/blob/master/Compactacao_e_Reuso_de_Espaco.md#abordagem-est%C3%A1tica)
+- [Abordagem Dinâmica](https://github.com/yasmin-araujo/Arquivos/blob/master/Compactacao_e_Reuso_de_Espaco.md#abordagem-din%C3%A2mica)
 
 ## Manipulação de Dados
 ### Operações básicas
@@ -107,7 +107,7 @@ Características:
 - Inserção e reuso do espaço: sempre ocorrem no inicio da pilha
 
 #### Busca
-Igual busca da [abordagem estática]().
+Igual busca da [abordagem estática](https://github.com/yasmin-araujo/Arquivos/blob/master/Compactacao_e_Reuso_de_Espaco.md#busca).
 
 #### Remoção
 ```

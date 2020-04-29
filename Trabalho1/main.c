@@ -12,27 +12,46 @@
 
 typedef struct _registro_cabecalho
 {
-    char status;            // Consistência do arquivo de dados
-    int RRNproxRegistro;    // RRN do próximo registro a ser inserido
+    char status;         // Consistência do arquivo de dados
+    int RRNproxRegistro; // RRN do próximo registro a ser inserido
     int numeroRegistrosInseridos;
     int numeroRegistrosRemovidos;
     int numeroRegistrosAtualizados;
-    // char lixo[111];
 } registro_cabecalho;
 
 typedef struct _registro_dados
 {
     int campo1;
     int campo2;
-    char *cidadeMae;
-    char *cidadeBebe;
+    char cidadeMae[105];
+    char cidadeBebe[105];
     int idNascimento;
     int idadeMae;
-    char dataNascimento[10];
+    char dataNascimento[11];
     char sexoBebe;
-    char estadoMae[2];
-    char estadoBebe[2];
+    char estadoMae[3];
+    char estadoBebe[3];
 } registro_dados;
+
+
+void atualiza_cabecalho(FILE *fpG, registro_cabecalho *regc, int insereLixo)
+{
+    //printf("status: %c, rrnprox: %d, rrnin: %d , rrnrem: %d , regatualiza: %d", regc->status, regc->RRNproxRegistro, regc->numeroRegistrosInseridos, regc->numeroRegistrosInseridos, regc->numeroRegistrosAtualizados);
+    fseek(fpG, 0, SEEK_SET); // Vai para o começo do arquivo
+    fwrite(&regc->status, sizeof(char), 1, fpG);
+    fwrite(&regc->RRNproxRegistro, sizeof(int), 1, fpG);
+    fwrite(&regc->numeroRegistrosInseridos, sizeof(int), 1, fpG);
+    fwrite(&regc->numeroRegistrosRemovidos, sizeof(int), 1, fpG);
+    fwrite(&regc->numeroRegistrosAtualizados, sizeof(int), 1, fpG);
+     if (insereLixo) //caso esteja criando o cabeçalho
+     {
+         char lixo[111];
+         for (int i = 0; i < 111; i++)
+             lixo[i] = '$';
+         fwrite(&lixo, sizeof(char), 111, fpG);
+     }
+
+}
 
 /**
  *  Funcionalidade 1 
@@ -44,13 +63,20 @@ void leitura_registros(FILE *fpE, FILE *fpG, registro_cabecalho *regc)
 {
     // fread(onde armazenar, sizeof , vezes quatos, fp)
     // fwrite(de onde ler , sizeof, vezes quantos, fp)
-    int size_campo1;
     registro_dados *regd = (registro_dados *)malloc(sizeof(registro_dados));
-    while (fpE != EOF)
+
+    fseek(fpG, (regc->RRNproxRegistro + 1) * 128, SEEK_SET);
+    char testa;
+    while (fread(&testa, 1, 1, fpE) != 0)
     {
+        //i++;
+        //printf("a\n\n");
+        fseek(fpE, -1, SEEK_CUR);
+        //printf("b %d\n\n", regc->RRNproxRegistro);
         // Leitura de dados
 
         // DUVIDAS DO MAL
+        // 1 arquivoEntrada.csv arquivoGerado.bin
         // tem variavel lixo? no cabeçalho -> não , é só escrever $ mesmo
         // fread em dados variaveis -> usar fscanf com mascara %[^,]
         // o que fazer com o espaço que sobra -> vai sobrar antes dos dados fixos e deve ser preenchido com $
@@ -60,39 +86,47 @@ void leitura_registros(FILE *fpE, FILE *fpG, registro_cabecalho *regc)
         // inicializa os dados do cabeçalho apenas qnd o registro esta sendo criado pela primeira vez?
         // registro inexistente só quando nao tem nenhum no arquivo?
         // como saber se algum erro foi encontrado no processamento?
-
-        fscanf(fpE, "%[^,],", regd->cidadeMae);
+        //char cidadeBebe[17];
+        fscanf(fpE, "%[^,],",regd->cidadeMae);
+        //printf("%s\n\n",regd->cidadeMae);
         fscanf(fpE, "%[^,],", regd->cidadeBebe);
         fscanf(fpE, "%d,", &regd->idNascimento);
         fscanf(fpE, "%d,", &regd->idadeMae);
         fscanf(fpE, "%[^,],", regd->dataNascimento);
         fscanf(fpE, "%c,", &regd->sexoBebe);
         fscanf(fpE, "%[^,],", regd->estadoMae);
-        fscanf(fpE, "%[^,]", regd->estadoBebe);
-        //fread(regd->cidadeMae, , sizeof(), fpE);
-        // fread(&regd->idNascimento, sizeof(int), 1, fpE);
-        // fread(&regd->idadeMae, sizeof(int), 1, fpE);
-        // fread(regd->dataNascimento, sizeof(char), 10, fpE);
-        // fread(&regd->sexoBebe, sizeof(char), 1, fpE);
-        // fread(regd->estadoMae, sizeof(char), 2, fpE);
-        // fread(regd->estadoBebe, sizeof(char), 2, fpE);
+        fscanf(fpE, "%[^\n]\n", regd->estadoBebe);
+        printf("%s, %s, %d, %d, %s, %c ,%s, %s\n", regd->cidadeMae,regd->cidadeBebe,regd->idNascimento,regd->idadeMae,regd->dataNascimento,regd->sexoBebe,regd->estadoMae,regd->estadoBebe);
+
         // Escrita de dados
-        //muitos fwrites...
-        size_campo1 = strlen(regd->cidadeMae);
-        fwrite(size_campo1, sizeof(int), 1, fpG);
-        fwrite(regd->cidadeMae, sizeof(char), size_campo1, fpG);
+
+        //tratando a parte de lixo
+        int tamanholixo = 105 - strlen(regd->cidadeMae) - strlen(regd->cidadeBebe) - 8;
+        char *lixo = (char *)malloc(sizeof(char) * tamanholixo);
+        for (int i = 0; i < tamanholixo; i++)
+            lixo[i] = '$';
+
+        int tamanho1 = strlen(regd->cidadeMae);
+        int tamanho2 = strlen(regd->cidadeBebe);
+        fwrite(&tamanho1, sizeof(int), 1, fpG);
+        fwrite(&tamanho2, sizeof(int), 1, fpG);
+        fwrite(regd->cidadeMae, sizeof(char), strlen(regd->cidadeMae), fpG);
+        fwrite(regd->cidadeBebe, sizeof(char), strlen(regd->cidadeBebe), fpG);
+        fwrite(&lixo, sizeof(char), tamanholixo, fpG);
         fwrite(&regd->idNascimento, sizeof(int), 1, fpG);
         fwrite(&regd->idadeMae, sizeof(int), 1, fpG);
-        fwrite(regd->dataNascimento, sizeof(char), 10, fpG);
+        fwrite(&regd->dataNascimento, sizeof(char), 10, fpG);
         fwrite(&regd->sexoBebe, sizeof(char), 1, fpG);
-        fwrite(regd->estadoMae, sizeof(char), 2, fpG);
-        fwrite(regd->estadoBebe, sizeof(char), 2, fpG);
+        fwrite(&regd->estadoMae, sizeof(char), 2, fpG);
+        fwrite(&regd->estadoBebe, sizeof(char), 2, fpG);
 
         regc->RRNproxRegistro++;
         regc->numeroRegistrosInseridos++;
     }
 
-    binarioNaTela(fpG);
+    // Atualizar cabeçalho
+    atualiza_cabecalho(fpG, regc, 0);
+    free(regd);
 }
 
 /**
@@ -118,8 +152,10 @@ void recupera_dados(FILE *fpG, registro_cabecalho *regc)
     }
 
     // Ler dados até o final do arquivo
-    while (fpG != EOF)
+    char testa;
+    while (fread(&testa, 1, 1, fpG) != 0)
     {
+        fseek(fpG, -1, SEEK_CUR);
         fread(&regd->campo1, sizeof(int), 1, fpG);
         fread(&regd->campo2, sizeof(int), 1, fpG);
         //dados variaveis aqui
@@ -143,17 +179,15 @@ void recupera_dados(FILE *fpG, registro_cabecalho *regc)
 
             switch (regd->sexoBebe)
             {
-            case '0':
-                strcpy(sexoBebe, "IGNORADO");
-                break;
             case '1':
                 strcpy(sexoBebe, "MASCULINO");
                 break;
             case '2':
                 strcpy(sexoBebe, "FEMININO");
                 break;
+            case '0':
             default:
-                strcpy(sexoBebe, "-");
+                strcpy(sexoBebe, "IGNORADO");
                 break;
             }
 
@@ -165,30 +199,66 @@ void recupera_dados(FILE *fpG, registro_cabecalho *regc)
 
 int main()
 {
-    char *arquivoEntrada;
-    char *arquivoGerado;
+    // Nomes dos arquivos
+    char arquivoEntrada[100];
+    char arquivoGerado[100];
+
+    // Opção de funcionalidade a executar
     int opc;
     scanf("%d", &opc);
-    scanf("%s", arquivoEntrada);
-    scanf("%s", arquivoGerado);
-    FILE *fpE = fopen(arquivoEntrada, "r");
-    FILE *fpG = fopen(arquivoGerado, "w+b");
 
+    // Ponteiros para arquivos
+    FILE *fpE;
+    FILE *fpG;
+
+    // Funcionalidades
+    if (opc == 1)
+    {
+        // Leitura dos nomes dos arquivos
+        scanf("%s", arquivoEntrada);
+        scanf("%s", arquivoGerado);
+
+        // Abertura dos arquivos
+        fpE = fopen(arquivoEntrada, "r");
+        fpG = fopen(arquivoGerado, "w+b");
+    }
+    else if (opc == 2)
+    {
+        // Leitura dos nomes do arquivo
+        scanf("%s", arquivoGerado);
+
+        // Abertura do arquivo
+        fpG = fopen(arquivoGerado, "w+b");
+    }
+
+    // Aloca dinamicamente ua struct dos registros do cabeçalho
     registro_cabecalho *regc = (registro_cabecalho *)malloc(sizeof(registro_cabecalho));
-    
+
+    printf("o arquivo chama: %s\n", arquivoEntrada);
+
     // Inicializa os dados do cabeçalho
     // deveria inicializar se não existe o arquivo apenas?
     regc->status = '0';
-    regc->RRNproxRegistro = 0;
+    regc->RRNproxRegistro = 10;
     regc->numeroRegistrosInseridos = 0;
     regc->numeroRegistrosRemovidos = 0;
-    // for (int i = 0; i < 111; i++)
-    //     regc->lixo[i] = '$';
+    //printf("status: %c, rrnprox: %d, rrnin: %d , rrnrem: %d , regatualiza: %d", regc->status, regc->RRNproxRegistro, regc->numeroRegistrosInseridos, regc->numeroRegistrosInseridos, regc->numeroRegistrosAtualizados);
 
-    leitura_registros(fpE, fpG, regc);
-    recupera_dados(fpG, regc);
+    atualiza_cabecalho(fpG, regc, 1);
 
-    regc->status = '1';
+    //4444
+    if (opc == 1)
+    {
+        leitura_registros(fpE, fpG, regc);
+        printf("\n\nBOTA NA TELAAA\n\n");
+        binarioNaTela(arquivoGerado);
+    }
+    // else if (opc = 2)
+    //     recupera_dados(fpG, regc);
+
+    // regc->status = '1';
+    //4444
+
     // escrever status no arquivo fpG
 
     // Fechar arquivos utilizados

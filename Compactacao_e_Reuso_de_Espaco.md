@@ -93,7 +93,6 @@ Renomear arqTemp para arqX
 ```
 
 
-
 ## Abordagem Dinâmica
 Indicada para aplicações interativas que acessam arquivos altamente voláteis.
 
@@ -134,3 +133,84 @@ Senão offset = RRN do topo * sizeof(registro)
     inserir o novo registro a partir do offset )
 	
 ```
+
+### Registros de Tamanho Variável
+Lista encadeada de registros eliminados não tendo uma implementação específica.
+
+Características:
+
+- Lista: composta pelos byte offsets dos registros marcados como logicamente removidos
+- Cabeça da lista (topo da lista): armazenada no registro de cabeçalho do arquivo
+- Inserção: sempre ocorre no inicio da lista (como em uma pilha)
+
+Observações:
+- É necessário guardar também o tamanho do registro
+- Cada registro deve ter pelo menos 9 bytes
+
+#### Busca
+A busca é feita byte a byte, contando o número de delimitadores de registro quando necessário achar algum em específico.
+
+#### Remoção
+
+```
+1. Encontrar o registro desejado pelo byte offset 
+(buscar -> deve existir uma rotina de busca)
+2. Marcar o registro como logicamente removido (primeiro byte com um *)
+3. Escrever o tamanho do registro nos próximos 
+quatro bytes (tamanho inclui o delimitador)
+4. Escrever o topo da lista nos próximos 4 bytes do registro
+5. Atualizar o topo da lista com o byte offset do registro removido
+```
+
+#### Estratégias de Alocação
+Como os registros tem tamanhos diferentes, não dá para facilmente reutilizar o espaço. Portanto o registro deve caber no espaço que existe disponível. Para isto temos 3 técnicas de alocação:
+
+##### Estratégia First-Fit
+Utiliza o primeiro espaço que servir.
+Recomendado caso sistema esteja com muita [fragmentação interna](https://github.com/yasmin-araujo/Arquivos/blob/master/Compactacao_e_Reuso_de_Espaco.md#).
+
+```
+Se existe registro logicamente removido (topo != -1)
+	Então percorrer a lista até encontrar um registro no qual o novo caiba
+	Atualizar a lista com o encadeamento que está no registro
+	Inserir o registro
+Senão inserir o registro no final do arquivo
+```
+
+##### Estratégia Best-Fit
+Escolhe o espaço mais justo possível, sobrando a menor fragmentação interna.
+Recomendado caso sistema esteja com muita [fragmentação interna](https://github.com/yasmin-araujo/Arquivos/blob/master/Compactacao_e_Reuso_de_Espaco.md#).
+
+```
+Se existe registro logicamente removido (topo != -1)
+	Então percorrer toda a lista para encontrar a "menor sobra"
+	Atualizar lista com o encadeamento que está no registro
+	Inserir o registro
+Senão inserir o registro no final do arquivo
+```
+
+##### Estratégia Worst-Fit
+Escolhe o maior espaço possível, sobrando a maior fragmentação interna.
+Oferece maior possibilidade de tratamento de fragmentação interna (reaproveitamento de espaço), já que pode sobrar um espaço grande o suficiente para inserir um novo registro.
+Recomendado caso sistema esteja com muita [fragmentação externa](https://github.com/yasmin-araujo/Arquivos/blob/master/Compactacao_e_Reuso_de_Espaco.md#).
+
+```
+Se existe registro logicamente removido (topo != -1)
+	Então percorrer toda a lista para encontrar a "maior sobra"
+	Atualizar a lista com o encadeamento que está no registro
+	Inserir o registro
+Senão inserir o registro no final do arquivo
+```
+
+#### Fragmentação Interna
+Espaço que sobra dentro de um registro.
+Pode ocorrer com qualquer estratégia de alocação.
+
+**Solução**: Colocar o espaço que sobrou na lista encadeada como um registro eliminado.
+
+#### Fragmentação Externa
+Espaço que sobrou dentro de um registro, e foi colocado na lista encadeada como um registro eliminado, é tão pequeno que não pode armazenar nenhum dado.
+Pode acontecer com qualquer estratégia de alocação.
+
+**Solução**: Coalescimento - Junção de espaços vazios adjacentes, combinando 2 registros removidos e juntando em um só maior.
+**Dificuldade**: Técnica só pode ser aplicada se os 2 registros estiverem dentro da mesma págica de disco.

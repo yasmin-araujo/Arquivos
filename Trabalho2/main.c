@@ -77,10 +77,20 @@ void recupera_registro(FILE *fpG, registro_dados *regd)
 
     // Leitura dos dados
     fread(&regd->campo1, sizeof(int), 1, fpG);
+
+    if(regd->campo1 == -1)
+    {
+        // Move ponteiro para o próximo registro caso esteja excluído
+        regd = NULL;
+        fseek(fpG, 124, SEEK_CUR);
+        return;
+    }
+
     fread(&regd->campo2, sizeof(int), 1, fpG);
     fread(regd->cidadeMae, sizeof(char), regd->campo1, fpG);
     fread(regd->cidadeBebe, sizeof(char), regd->campo2, fpG);
-    regd->cidadeBebe[regd->campo2] = '\0'; // Insere '\0' no final da string de tamanho variável
+    regd->cidadeMae[regd->campo1] = '\0'; // Insere '\0' no final da string de tamanho variável
+    regd->cidadeBebe[regd->campo2] = '\0'; 
     int tamanho = 105 - 8 - regd->campo1 - regd->campo2; // Tamanho do lixo nos campos variáveis
     fread(lixo, sizeof(char), tamanho, fpG);
     fread(&regd->idNascimento, sizeof(int), 1, fpG);
@@ -129,6 +139,214 @@ void imprime_registro(registro_dados *regd)
         // Impressão dos dados formatados
         printf("Nasceu em %s/%s, em %s, um bebê de sexo %s.\n", regd->cidadeBebe, regd->estadoBebe, regd->dataNascimento, sexoBebe);
     }
+}
+
+/**
+ * Função para buscar registros de acordo com um critério de busca simples ou combinada definido pelo usuário
+ * 
+ * @param fpG: Ponteiro para arquivo a ser lido 
+ * @return RRN: Array de RRNs dos registros que seguem os critérios
+*/
+int* busca_combinada(FILE *fpG)
+{
+    fseek(fpG, 5, SEEK_SET);
+
+    // Número de registros no arquivo para alocar o *RRN
+    int numreg;
+    fread(&numreg, sizeof(int), 1, fpG);
+
+    int *RRN = malloc(sizeof(int)*numreg);
+
+    // Aloca dinamicamente uma struct para o registro de dados
+    registro_dados *regd = (registro_dados *)malloc(sizeof(registro_dados));
+
+    // Confere se alocação foi realizada com sucesso
+    if(regd == NULL)
+    {
+        printf("Falha no processamento do arquivo.");
+        free(RRN);
+        return NULL;
+    }
+
+    char cidadeMae[105];
+    char cidadeBebe[105];
+    int idNascimento = -1;
+    int idadeMae = -1;
+    char dataNascimento[11];
+    char sexoBebe = '3';
+    char estadoMae[3];
+    char estadoBebe[3];
+    cidadeMae[0] = '\0';
+    cidadeBebe[0] = '\0';
+    dataNascimento[0] = '\0';
+    estadoMae[0] = '\0';
+    estadoBebe[0] = '\0';
+
+    int m;
+
+    scanf("%d", &m);
+
+    for(int i = 0; i < m; i++)
+    {
+        char nomecampo[20];
+        char valor[128];
+        int valorint;
+        scanf("%s", nomecampo);
+
+        if(!strcmp(nomecampo, "cidadeMae"))
+        {
+            scanf(" \"%[^\"]\"", valor);
+            strcpy(cidadeMae, valor);
+        }
+        
+        if(!strcmp(nomecampo,"cidadeBebe"))
+        {
+            scanf(" \"%[^\"]\"", valor);
+            strcpy(cidadeBebe, valor);
+        }
+        
+        if(!strcmp(nomecampo, "idNascimento"))
+        {
+            scanf("%d", &valorint);
+            idNascimento = valorint;
+        }
+        
+        if(!strcmp(nomecampo,"idadeMae"))
+        {
+            scanf("%d", &valorint);
+            idadeMae = valorint;
+        }
+            
+        if(!strcmp(nomecampo, "dataNascimento"))
+        {
+            scanf(" \"%[^\"]\"", valor);
+            strcpy(dataNascimento, valor);
+        }
+        
+        if(!strcmp(nomecampo,"sexoBebe"))
+        {
+            scanf(" \"%[^\"]\"", valor);
+            sexoBebe = valor[0];
+        }
+        
+        if(!strcmp(nomecampo, "estadoMae"))
+        {
+            scanf(" \"%[^\"]\"", valor);
+            strcpy(estadoBebe, valor);
+        }
+        
+        if(!strcmp(nomecampo,"estadoBebe"))
+        {
+            scanf(" \"%[^\"]\"", valor);
+            strcpy(estadoBebe, valor);   
+        }
+    }
+    
+    fseek(fpG, 128, SEEK_SET);
+
+    // Contador de registros que não foram removidos
+    int cnt_rem = 0;
+    
+    int i = -1;
+
+    // Ler dados até o final do arquivo
+    char teste;
+    while (fread(&teste, 1, 1, fpG) != 0)
+    {
+        i++;
+        fseek(fpG, -1, SEEK_CUR);
+        
+        recupera_registro(fpG, regd);
+            
+        if(cidadeMae[0] != '\0')
+        {
+            if(strcmp(cidadeMae, regd->cidadeMae)) 
+                continue;
+        }
+        if(cidadeBebe[0] != '\0')
+        {
+            if(strcmp(cidadeBebe, regd->cidadeBebe)) 
+                continue;
+        }
+        if(idNascimento != -1)
+        {
+            if(idNascimento != regd->idNascimento) 
+                continue;
+        }
+        if(idadeMae != -1)
+        {
+            if(idadeMae != regd->idadeMae)
+                continue;
+        }
+        if(dataNascimento[0] != '\0')
+        {
+            if(strcmp(dataNascimento, regd->dataNascimento)) 
+                continue;
+        }
+        if(sexoBebe != '3')
+        {
+            if(sexoBebe != regd->sexoBebe) 
+                continue;
+        }
+        if(estadoMae[0] != '\0')
+        {
+            if(strcmp(estadoMae, regd->estadoMae)) 
+                continue;
+        }
+        if(estadoBebe[0] != '\0')
+        {
+            if(strcmp(estadoBebe, regd->estadoBebe))
+                continue;
+        }
+
+        if (regd->campo1 != -1)
+        {   
+            RRN[cnt_rem] = i;
+            cnt_rem++;
+        }
+        
+    }
+
+    // Se nenhum registro foi lido
+    if(cnt_rem == 0)
+        return NULL;
+    
+    free(regd);
+    RRN[cnt_rem] = -1;
+    
+    return RRN;
+}
+
+/**
+ * 
+*/
+void insere(FILE *fpG, registro_dados *regd)
+{
+    // Tratando a parte de lixo
+    int tamanholixo = 105 - strlen(regd->cidadeMae) - strlen(regd->cidadeBebe) - 8;
+    char *lixo = (char *)malloc(sizeof(char) * tamanholixo);
+    for (int i = 0; i < tamanholixo; i++)
+        lixo[i] = '$';
+
+    // Caso o sexo do bebê seja um campo nulo
+    if(regd->sexoBebe == '\0') regd->sexoBebe = '0';
+    
+    int tamanho1 = strlen(regd->cidadeMae);
+    int tamanho2 = strlen(regd->cidadeBebe);
+
+    // Escrita dos dados
+    fwrite(&tamanho1, sizeof(int), 1, fpG);
+    fwrite(&tamanho2, sizeof(int), 1, fpG);
+    fwrite(regd->cidadeMae, sizeof(char), strlen(regd->cidadeMae), fpG);
+    fwrite(regd->cidadeBebe, sizeof(char), strlen(regd->cidadeBebe), fpG);
+    fwrite(lixo, sizeof(char), tamanholixo, fpG);
+    fwrite(&regd->idNascimento, sizeof(int), 1, fpG);
+    fwrite(&regd->idadeMae, sizeof(int), 1, fpG);
+    fwrite(&regd->dataNascimento, sizeof(char), 10, fpG);
+    fwrite(&regd->sexoBebe, sizeof(char), 1, fpG);
+    fwrite(&regd->estadoMae, sizeof(char), 2, fpG);
+    fwrite(&regd->estadoBebe, sizeof(char), 2, fpG);
+    free(lixo); 
 }
 
 /**
@@ -197,30 +415,7 @@ void leitura_registros(FILE *fpE, FILE *fpG, registro_cabecalho *regc)
         fscanf(fpE, "%[^\n]", regd->estadoBebe);
         getc(fpE);
 
-        // Tratando a parte de lixo
-        int tamanholixo = 105 - strlen(regd->cidadeMae) - strlen(regd->cidadeBebe) - 8;
-        char *lixo = (char *)malloc(sizeof(char) * tamanholixo);
-        for (int i = 0; i < tamanholixo; i++)
-            lixo[i] = '$';
-
-        // Caso o sexo do bebê seja um campo nulo
-        if(regd->sexoBebe == '\0') regd->sexoBebe = '0';
-        
-        int tamanho1 = strlen(regd->cidadeMae);
-        int tamanho2 = strlen(regd->cidadeBebe);
-
-        // Escrita dos dados
-        fwrite(&tamanho1, sizeof(int), 1, fpG);
-        fwrite(&tamanho2, sizeof(int), 1, fpG);
-        fwrite(regd->cidadeMae, sizeof(char), strlen(regd->cidadeMae), fpG);
-        fwrite(regd->cidadeBebe, sizeof(char), strlen(regd->cidadeBebe), fpG);
-        fwrite(lixo, sizeof(char), tamanholixo, fpG);
-        fwrite(&regd->idNascimento, sizeof(int), 1, fpG);
-        fwrite(&regd->idadeMae, sizeof(int), 1, fpG);
-        fwrite(&regd->dataNascimento, sizeof(char), 10, fpG);
-        fwrite(&regd->sexoBebe, sizeof(char), 1, fpG);
-        fwrite(&regd->estadoMae, sizeof(char), 2, fpG);
-        fwrite(&regd->estadoBebe, sizeof(char), 2, fpG);
+        insere(fpG, regd);
 
         // Atualiza dados do cabeçalho
         regc->RRNproxRegistro++;
@@ -290,143 +485,37 @@ void recupera_dados(FILE *fpG)
 /**
  *  Funcionalidade 3
  * 
- * Recuperação dos dados de todos os registros de acordo com um critério de busca 
- * simples ou combinada determinada pelo usuário
+ * Recuperação dos dados de todos os registros de acordo com um critério de busca
  * 
  * @param fpG: Ponteiro para arquivo gerado 
 */
-void busca(FILE *fpG)
+void buscar_registros(FILE* fpG)
 {
-    // Aloca dinamicamente uma struct para o registro de dados
+    // Armazena array de registros encontrados de acordo com a busca
+    int* RRN = busca_combinada(fpG);
+    if(RRN == NULL)
+    {
+        printf("Registro inexistente");
+        return;
+    }
+    
     registro_dados *regd = (registro_dados *)malloc(sizeof(registro_dados));
 
-    // Confere se alocação foi realizada com sucesso
-    if(regd == NULL)
-    {
-        printf("Falha no processamento do arquivo.");
-        return;
-    }
-
-    char cidadeMae[105];
-    char cidadeBebe[105];
-    int idNascimento = -1;
-    int idadeMae = -1;
-    char dataNascimento[11];
-    char sexoBebe = '3';
-    char estadoMae[3];
-    char estadoBebe[3];
-    cidadeMae[0] = '\0';
-    cidadeBebe[0] = '\0';
-    dataNascimento[0] = '\0';
-    estadoMae[0] = '\0';
-    estadoBebe[0] = '\0';
-    int m;
-
-    scanf("%d", &m);
-
-    for(int i = 0; i < m; i++)
-    {
-        char nomecampo[20];
-        char valor[128];
-        scanf("%s", nomecampo);
-        scanf("%s", valor);
-
-        if(!strcmp(nomecampo, "cidadeMae"))
-            strcpy(cidadeMae, valor);
-        
-        if(!strcmp(nomecampo,"cidadeBebe"))
-            strcpy(cidadeBebe, valor);
-        
-        if(!strcmp(nomecampo, "idNascimento"))
-            idNascimento = atoi(valor);
-        
-        if(!strcmp(nomecampo,"idadeMae"))
-            idadeMae = atoi(valor);
-            
-        if(!strcmp(nomecampo, "dataNascimento"))
-            strcpy(dataNascimento, valor);
-        
-        if(!strcmp(nomecampo,"sexoBebe"))
-            sexoBebe = valor[0];
-        
-        if(!strcmp(nomecampo, "estadoMae"))
-            strcpy(estadoBebe, valor);
-        
-        if(!strcmp(nomecampo,"estadoBebe"))
-            strcpy(estadoBebe, valor);   
-    }
+    int i = 0;
     
-    fseek(fpG, 128, SEEK_SET);
-
-    // Contador de registros que não foram removidos
-    int cnt_rem = 0;
-
-    // Ler dados até o final do arquivo
-    char teste;
-    while (fread(&teste, 1, 1, fpG) != 0)
+    // Mostra todos os registros buscados
+    while(RRN[i] != -1)
     {
-        fseek(fpG, -1, SEEK_CUR);
-        
+        fseek(fpG, 128*(RRN[i]+1), SEEK_SET);
         recupera_registro(fpG, regd);
-        
-        if(cidadeMae[0] != '\0')
-        {
-            if(strcmp(cidadeMae, regd->cidadeMae)) 
-                continue;
-        }
-        if(cidadeBebe[0] != '\0')
-        {
-            if(strcmp(cidadeBebe, regd->cidadeBebe)) 
-                continue;
-        }
-        if(idNascimento != -1)
-        {
-            if(idNascimento != regd->idNascimento) 
-                continue;
-        }
-        if(idadeMae != -1)
-        {
-            if(idadeMae != regd->idadeMae)
-                continue;
-        }
-        if(dataNascimento[0] != '\0')
-        {
-            if(strcmp(dataNascimento, regd->dataNascimento)) 
-                continue;
-        }
-        if(sexoBebe != '3')
-        {
-            if(sexoBebe != regd->sexoBebe) 
-                continue;
-        }
-        if(estadoMae[0] != '\0')
-        {
-            if(strcmp(estadoMae, regd->estadoMae)) 
-                continue;
-        }
-        if(estadoBebe[0] != '\0')
-        {
-            if(strcmp(estadoBebe, regd->estadoBebe))
-                continue;
-        }
-
-        if (regd->campo1 != -1)
-        {
-            imprime_registro(regd);
-            cnt_rem++;
-        }
+        imprime_registro(regd);
+        i++;
     }
 
-    // Se nenhum registro foi lido
-    if(cnt_rem == 0)
-    {
-        printf("Registro inexistente.");
-        return;
-    }
-    
+    // Libera memória alocada dinamicamente
     free(regd);
+    free(RRN);
 }
-
 
 /**
  *  Funcionalidade 4
@@ -451,8 +540,8 @@ void buscaRRN(FILE *fpG)
     int RRN;
     scanf("%d", &RRN);
 
+    // Recupera e mostra registro caso não excluído
     fseek(fpG, 128 * (RRN + 1), SEEK_SET);
-
     recupera_registro(fpG, regd);
     
     if (regd->campo1 == -1)
@@ -460,6 +549,239 @@ void buscaRRN(FILE *fpG)
     else
         imprime_registro(regd);
 
+    free(regd);
+}
+
+/**
+ *  Funcionalidade 5
+ * 
+ * N remoções lógicas nos registros baseadas em critérios de busca simples ou combinada
+ * 
+ * @param fpG: Ponteiro para arquivo gerado 
+ * @param regc: Ponteiro para a estrutura de cabeçalho
+*/
+void remove_registros(FILE* fpG, registro_cabecalho *regc)
+{ 
+    regc->status = '0';
+    atualiza_cabecalho(fpG, regc, 0);
+
+    // Aloca dinamicamente uma struct para o registro de dados
+    registro_dados *regd = (registro_dados *)malloc(sizeof(registro_dados));
+
+    // Confere se alocação foi realizada com sucesso
+    if(regd == NULL)
+    {
+        printf("Falha no processamento do arquivo.");
+        return;
+    }
+
+    //número de buscas
+    int n;
+    scanf("%d", &n);
+
+    int removido = -1;
+
+    for(int i = 0; i < n; i++)
+    {
+        int *RRN = busca_combinada(fpG);
+
+        if(RRN == NULL) 
+            continue;
+
+        int j = 0;
+        while(RRN[j] != -1)
+        {
+            fseek(fpG, 128*(RRN[j]+1), SEEK_SET);
+            fwrite(&removido, sizeof(int), 1, fpG);
+            regc->numeroRegistrosRemovidos++;
+            regc->numeroRegistrosInseridos--;
+            j++;
+        }
+    }
+    
+    //atualizando o status para 1    
+    regc->status = '1';
+    atualiza_cabecalho(fpG, regc, 0);
+    free(regd);
+}
+
+/**
+ *  Funcionalidade 6
+ * 
+ * Inserção de registros adicionais, baseado na abordagem estática de registros logicamente removidos.
+ * 
+ * @param fpG: Ponteiro para arquivo gerado 
+ * @param regc: Ponteiro para a estrutura de cabeçalho
+*/
+void insere_registro(FILE* fpG, registro_cabecalho *regc)
+{
+    // regc->status = '0';
+    // atualiza_cabecalho(fpG, regc, 0);
+
+    // Aloca dinamicamente uma struct para o registro de dados
+    registro_dados *regd = (registro_dados *)malloc(sizeof(registro_dados));
+
+    // Confere se alocação foi realizada com sucesso
+    if(regd == NULL)
+    {
+        printf("Falha no processamento do arquivo.");
+        return;
+    }
+
+    int n;
+    scanf("%d", &n);
+
+    for (int i = 0; i < n; i++)
+    {
+        scanf(" \"%[^\"]\"", regd->cidadeMae);
+        scanf(" \"%[^\"]\"", regd->cidadeBebe);
+        scanf(" %d", &regd->idNascimento);
+        scanf(" %d", &regd->idadeMae);
+        scanf(" \"%[^\"]\"", regd->dataNascimento);
+        scanf(" \"%c\"", &regd->sexoBebe);
+        scanf(" \"%[^\"]\"", regd->estadoMae);
+        scanf(" \"%[^\"]\"", regd->estadoBebe); 
+        
+        fseek(fpG, 0, SEEK_END);
+        insere(fpG,regd);
+        regc->numeroRegistrosInseridos++;   
+    }    
+
+    // regc->status = '1';
+    // atualiza_cabecalho(fpG, regc, 0);
+}
+
+/**
+ *  Funcionalidade 7
+ * 
+ * Atualização de um ou mais campos de um registro identificado por seu RRN
+ * 
+ * @param fpG: Ponteiro para arquivo gerado 
+ * @param regc: Ponteiro para a estrutura de cabeçalho
+*/
+void atualiza_registro(FILE* fpG, registro_cabecalho *regc)
+{
+    regc->status = '0';
+    atualiza_cabecalho(fpG, regc, 0);
+    
+    // Aloca dinamicamente uma struct para o registro de dados
+    registro_dados *regd = (registro_dados *)malloc(sizeof(registro_dados));
+
+    // Confere se alocação foi realizada com sucesso
+    if(regd == NULL)
+    {
+        printf("Falha no processamento do arquivo.");
+        return;
+    }
+
+    int n;
+    scanf("%d", &n);
+
+    for (int i = 0; i < n; i++)
+    {
+        // Recebe valor do RRN
+        int RRN;
+        scanf("%d", &RRN);
+
+        // Recupera e mostra registro caso não excluído
+        int start = 128 * (RRN + 1);
+        recupera_registro(fpG, regd);
+
+        int m;
+        scanf("%d", &m);
+
+        for (int j = 0; j < m; j++)
+        {
+            char nomecampo[20];
+            char valor[128];
+            int valorint;
+            scanf("%s", nomecampo);
+
+            if(!strcmp(nomecampo, "cidadeMae"))
+            {
+                // Leitura do valor
+                scanf(" \"%[^\"]\"", valor);
+                strcpy(regd->cidadeMae, valor);
+
+                // Escrita do tamanho do campo cidadeMae em campo1
+                fseek(fpG, start, SEEK_SET);
+                regd->campo1 = strlen(valor);
+                fwrite(&regd->campo1, sizeof(int), 1, fpG);
+                
+                // Junta valor das cidades Mae e Bebe e escreve no arquivo
+                fseek(fpG, 4, SEEK_CUR);
+                char cidades[105];
+                strcpy(cidades, valor);
+                strcat(cidades, regd->cidadeBebe);
+                fwrite(cidades, sizeof(char), regd->campo1 + regd->campo2, fpG);
+            }
+            
+            if(!strcmp(nomecampo,"cidadeBebe"))
+            {
+                // Leitura do valor
+                scanf(" \"%[^\"]\"", valor);
+                strcpy(regd->cidadeBebe, valor);
+                
+                // Escrita do tamanho do campo cidadeBebe em campo2
+                fseek(fpG, start + 4, SEEK_SET);
+                regd->campo2 = strlen(valor);
+                fwrite(&regd->campo2, sizeof(int), 1, fpG);
+
+                // Escreve valor da cidade Bebe no arquivo
+                fseek(fpG, regd->campo1, SEEK_CUR);
+                fwrite(valor, sizeof(char), regd->campo2, fpG);
+            }
+            
+            if(!strcmp(nomecampo, "idNascimento"))
+            {
+                scanf("%d", &valorint);
+                fseek(fpG, start + 105, SEEK_SET);
+                fwrite(&valorint, sizeof(int), 1, fpG);
+            }
+            
+            if(!strcmp(nomecampo,"idadeMae"))
+            {
+                scanf("%d", &valorint);
+                fseek(fpG, start + 109, SEEK_SET);
+                fwrite(&valorint, sizeof(int), 1, fpG);
+            }
+                
+            if(!strcmp(nomecampo, "dataNascimento"))
+            {
+                scanf(" \"%[^\"]\"", valor);
+                fseek(fpG, start + 113, SEEK_SET);
+                fwrite(valor, sizeof(char), 10, fpG);
+            }
+            
+            if(!strcmp(nomecampo,"sexoBebe"))
+            {
+                scanf(" \"%[^\"]\"", valor);
+                fseek(fpG, start + 123, SEEK_SET);
+                fwrite(valor, sizeof(char), 1, fpG);
+            }
+            
+            if(!strcmp(nomecampo, "estadoMae"))
+            {
+                scanf(" \"%[^\"]\"", valor);
+                fseek(fpG, start + 124, SEEK_SET);
+                fwrite(valor, sizeof(char), 2, fpG);
+                
+            }
+            
+            if(!strcmp(nomecampo,"estadoBebe"))
+            {
+                scanf(" \"%[^\"]\"", valor);
+                fseek(fpG, start + 126, SEEK_SET);
+                fwrite(valor, sizeof(char), 2, fpG);
+            }
+        }
+
+        regc->numeroRegistrosAtualizados++;
+    }
+    
+    regc->status = '1';
+    atualiza_cabecalho(fpG, regc, 0);
+    
     free(regd);
 }
 
@@ -521,13 +843,13 @@ int main()
         
         binarioNaTela(arquivoGerado);
     }
-    else if (opc >= 2 && opc <= 4)
+    else if (opc >= 2 && opc <= 7)
     {
         // Leitura dos nomes do arquivo
         scanf("%s", arquivoGerado);
 
         // Abertura do arquivo
-        fpG = fopen(arquivoGerado, "rb");
+        fpG = fopen(arquivoGerado, "rb+");
         if(fpG == NULL)
         {
             printf("Falha no processamento do arquivo.\n");
@@ -535,15 +857,20 @@ int main()
         }
 
         // Checagem de consistência dos dados pelo status
-        char status;
-        fread(&status, sizeof(char), 1, fpG);
+        fread(&regc->status, sizeof(char), 1, fpG);
 
         // Caso arquivo esteja inconsistente
-        if(status == '0')
+        if(regc->status == '0')
         {
             printf("Falha no processamento do arquivo.\n");
             return 0;
         }
+
+        // Obtenção dos dados do cabeçalho
+        fread(&regc->RRNproxRegistro, sizeof(int), 1, fpG);
+        fread(&regc->numeroRegistrosInseridos, sizeof(int), 1, fpG);
+        fread(&regc->numeroRegistrosRemovidos, sizeof(int), 1, fpG);
+        fread(&regc->numeroRegistrosAtualizados, sizeof(int), 1, fpG);
 
         fseek(fpG, 0, SEEK_SET);
 
@@ -554,17 +881,28 @@ int main()
                 recupera_dados(fpG);
                 break;
             case 3:
-                busca(fpG);
+                buscar_registros(fpG);
                 break;
             case 4:
                 buscaRRN(fpG);
+                break;
+            case 5:
+                remove_registros(fpG, regc);
+                binarioNaTela(arquivoGerado);
+                break;
+            case 6:
+                insere_registro(fpG, regc);
+                binarioNaTela(arquivoGerado);
+                break;
+            case 7:
+                atualiza_registro(fpG, regc);
+                binarioNaTela(arquivoGerado);
                 break;
         }
         
         // Fecha arquivo
         fclose(fpG);
     }
-
 
     // Libera espaço alocado dinâmicamente na memória
     free(regc);

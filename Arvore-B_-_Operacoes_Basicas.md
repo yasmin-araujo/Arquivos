@@ -13,9 +13,9 @@ A implementação adotada aqui será:
 
 São recursivas a partir do nó raiz e têm dois estágios de processamento, sendo o primeiro em páginas inteiras e o segundo dentro das páginas.
 
-- [Pesquisa](./#pesquisa)
+- [Pesquisa](./Arvore-B_-_Operacoes_Basicas.md#pesquisa)
 - [Inserção]()
-- [Remoção](./#remoção)
+- [Remoção](./Arvore-B_-_Operacoes_Basicas.md#remoção)
 
 ### Pesquisa
 ```
@@ -49,12 +49,12 @@ Toda remoção começa com uma busca, e somente pode ser feita em um nó folha.
 
 #### Casos
 
-1. [Remoção em nó folha sem underflow](./#caso-1)
-2. [Remoção em nó não folha](./#caso-2)
-3. [Remoção em nó folha com underflow](./#caso-3)
-4. [Remoção em nó folha com underflow e sem redistribuição](./#caso-4)
-5. [Underflow em nó pai após remoção em nó filho](./#caso-5)
-6. [Diminuição da altura da árvore](./#caso-6)
+1. [Remoção em nó folha sem underflow](./Arvore-B_-_Operacoes_Basicas.md#caso-1)
+2. [Remoção em nó não folha](./Arvore-B_-_Operacoes_Basicas.md#caso-2)
+3. [Remoção em nó folha com underflow](./Arvore-B_-_Operacoes_Basicas.md#caso-3)
+4. [Remoção em nó folha com underflow e sem redistribuição](./Arvore-B_-_Operacoes_Basicas.md#caso-4)
+5. [Underflow em nó pai após remoção em nó filho](./Arvore-B_-_Operacoes_Basicas.md#caso-5)
+6. [Diminuição da altura da árvore](./Arvore-B_-_Operacoes_Basicas.md#caso-6)
 
 #### Caso 1
 

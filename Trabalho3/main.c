@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "binarioNaTela.h"
+#include "arvoreB.h"
 
 //Struct para dos dados do registro do cabeçalho
 typedef struct _registro_cabecalho
@@ -316,6 +317,9 @@ int *busca_combinada(FILE *fpG)
         {
             RRN[cnt_rem] = i;
             cnt_rem++;
+            // Caso o valor de busca seja o idNascimento (como ele é único a busca é pausada e retorna apenas o seu RRN)
+            if(idNascimento != -1) 
+                break;
         }
     }
 
@@ -927,6 +931,47 @@ void atualiza_registro(FILE *fpG, registro_cabecalho *regc)
     free(regd);
 }
 
+
+/**
+ * Funcionalidade 8
+ * 
+ * Criação do arquivo de índice ÁrvoreB
+ * 
+ * @param fpE: Ponteiro para arquivo de entrada 
+ * @param fpI: Ponteiro para arquivo de índices que será gerado
+*/
+void cria_arvoreB(FILE* fpE, FILE* fpI)
+{
+    // Aloca dinamicamente uma struct para o registro de dados
+    registro_dados *regd = (registro_dados *)malloc(sizeof(registro_dados));
+
+    // Confere se alocação foi realizada com sucesso
+    if (regd == NULL)
+    {
+        printf("Falha no processamento do arquivo.");
+        return;
+    }
+    
+    criar_arvoreB(fpI);
+
+    int RRN_atual = 0;
+
+    fseek(fpE, 128, SEEK_SET);
+    char testa;
+    int a = 0;
+    while (fread(&testa, 1, 1, fpE) != 0)
+    {
+        // Volta byte lido para teste
+        fseek(fpE, -1, SEEK_CUR);
+        recupera_registro(fpE, regd);
+        
+        insercao_arvoreB(fpI, regd->idNascimento, RRN_atual);
+        RRN_atual++;
+        //if(a == 10) break;
+        //a++;
+    }
+}
+
 int main()
 {
     // Nomes dos arquivos
@@ -1062,14 +1107,14 @@ int main()
             return 0;
         }
 
-        // Chama funcionalidade aqui
+        cria_arvoreB(fpE, fpI);
         // Muda status pra 0 tb
 
         // Fecha arquivos
         fclose(fpI);
         fclose(fpE);
 
-        binarioNaTela(arquivoGerado);
+        binarioNaTela(arquivoIndiceIdNascimento);
     }
 
     // Libera espaço alocado dinâmicamente na memória

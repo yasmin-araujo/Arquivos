@@ -967,8 +967,8 @@ void cria_arvoreB(FILE* fpE, FILE* fpI)
         
         insercao_arvoreB(fpI, regd->idNascimento, RRN_atual);
         RRN_atual++;
-        //if(a == 10) break;
-        //a++;
+        // if(a == 30 -1) break;
+        //     a++;
     }
 }
 

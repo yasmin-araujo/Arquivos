@@ -63,13 +63,12 @@ void recupera_cabecalho_arvoreB(registro_cabecalho *regcb, FILE *fpI)
     fread(&regcb->nroChaves, sizeof(int), 1, fpI);
 }
 
-
 // Cria um novo nó e retorna seu RRN
 int criar_no(FILE *fpI)
 {
     registro_cabecalho *regcb = (registro_cabecalho *)malloc(sizeof(registro_cabecalho));
     recupera_cabecalho_arvoreB(regcb, fpI);
-    
+
     registro_dados *regdb = (registro_dados *)malloc(sizeof(registro_dados));
     regdb->nivel = -1;
     regdb->n = 0;
@@ -100,7 +99,7 @@ int criar_no(FILE *fpI)
     return regcb->proxRRN - 1;
 }
 
-void atualiza_pagina(registro_dados *regdb, FILE* fpI, int RRN)
+void atualiza_pagina(registro_dados *regdb, FILE *fpI, int RRN)
 {
     fseek(fpI, (RRN + 1) * 72, SEEK_SET);
     fwrite(&regdb->nivel, sizeof(int), 1, fpI);
@@ -115,7 +114,6 @@ void atualiza_pagina(registro_dados *regdb, FILE* fpI, int RRN)
         fwrite(&regdb->P[i], sizeof(int), 1, fpI);
     }
 }
-
 
 void recupera_pagina(registro_dados *regdb, FILE *fpI, int RRN)
 {
@@ -195,6 +193,7 @@ int insere_arvoreB(int current_RRN, int key, int RRN, int *promo_key, int *promo
     // Caso-base - Caso tenha chego em um nó não existente, retorna
     if (current_RRN == -1)
     {
+        // printf("ok chegamos no nó folha\n");
         *promo_key = key;
         *promo_RRN = RRN;
         *promo_r_child = -1;
@@ -214,13 +213,15 @@ int insere_arvoreB(int current_RRN, int key, int RRN, int *promo_key, int *promo
         if (i == 5)
             next_RRN = regdb->P[5];
         // Checa se a key atual é menor que a chave que C[i]
-        else if (key < regdb->C[i])
+        else if (key < regdb->C[i] || regdb->C[i] == -1)
         {
             next_RRN = regdb->P[i];
             break;
         }
     }
 
+    // printf("next_RRN: %d\n", next_RRN);
+    
     // Chama recursão novamente até chegar em um nó folha
     int return_value = insere_arvoreB(next_RRN, key, RRN, promo_key, promo_RRN, promo_r_child, fpI);
 
@@ -247,7 +248,7 @@ int insere_arvoreB(int current_RRN, int key, int RRN, int *promo_key, int *promo
             // Caso não seja inserido na última posição, da shift right nos valores seguintes
             if (*promo_key < regdb->C[j] || regdb->C[j] == -1)
             {
-                printf(" eu entrei pra adicionar na iteração em q j = %d  \n", j);
+                //printf("posicao pra inserir eh j = %d  \n", j);
                 for (int i = 4; i > j; i--)
                 {
                     regdb->C[i] = regdb->C[i - 1];
@@ -257,16 +258,16 @@ int insere_arvoreB(int current_RRN, int key, int RRN, int *promo_key, int *promo
 
                 // Insere
                 regdb->C[j] = *promo_key;
-                printf("antes de printar tudo vamos de C[%d] = %d\n", j, regdb->C[j]);
+                //printf("a chave que botamos foi promo_key: C[%d] = %d\n", j, regdb->C[j]);
                 regdb->PR[j] = *promo_RRN;
                 regdb->P[j + 1] = *promo_r_child;
                 regdb->n++;
                 break;
             }
-            printf("INSERE_ARVOREB: regdb->n: %d ", regdb->n);
-            for (int k = 0; k < 5; k++)
-                printf("regdbn->C[%d]: %d regdb->PR[%d]: %d ", k, regdb->C[k], k, regdb->PR[k]);
-            printf("\n");
+            //printf("INSERE_ARVOREB: \nainda não inserimos e número de chaves no nó = regdb->n: %d \n", regdb->n);
+            // for (int k = 0; k < 5; k++)
+                //printf("chave regdbn->C[%d]: %3d | RRN da chave regdb->PR[%d]: %3d \n", k, regdb->C[k], k, regdb->PR[k]);
+            //printf("\n");
         }
         atualiza_pagina(regdb, fpI, current_RRN);
         return 0; // False para promoção
@@ -282,12 +283,12 @@ int insere_arvoreB(int current_RRN, int key, int RRN, int *promo_key, int *promo
         split(*promo_key, *promo_RRN, *promo_r_child, regdb, &split_promo_key, &split_promo_RRN, &split_promo_r_child, new_regdb, fpI);
 
         atualiza_pagina(regdb, fpI, current_RRN);
-        atualiza_pagina(new_regdb, fpI, split_promo_r_child);  // Novo nó criado no split        
+        atualiza_pagina(new_regdb, fpI, split_promo_r_child); // Novo nó criado no split
 
         *promo_key = split_promo_key;
         *promo_RRN = split_promo_RRN;
         *promo_r_child = split_promo_r_child;
-        
+
         return 1; // True para promoção
     }
 }
@@ -298,14 +299,16 @@ void insercao_arvoreB(FILE *fpI, int key, int RRN)
     registro_cabecalho *regcb = (registro_cabecalho *)malloc(sizeof(registro_cabecalho));
     recupera_cabecalho_arvoreB(regcb, fpI);
     int RRN_raiz = regcb->noRaiz;
-    printf("COMECEI ");
-    printf("raiz: %d, prox RRN: %d, key: %d, RRN: %d\n", RRN_raiz, regcb->proxRRN, key, RRN);
+
+    // printf("\nCOMECEI BORA FAZER UMA NOVA INSERCAO\n");
+    // printf("raiz: %d, prox RRN: %d, key: %d, RRN: %d\n", RRN_raiz, regcb->proxRRN, key, RRN);
 
     int found_RRN = -1;
     // Se busca já encontrou chave a ser inserida
-    if (busca(RRN_raiz, key, &found_RRN, fpI)){
+    if (busca(RRN_raiz, key, &found_RRN, fpI))
+    {
+        // printf("achei a chave, sem insercao pra vc\n");
         return;
-        printf("achei");
     }
 
     int promo_key = -1;
@@ -317,6 +320,10 @@ void insercao_arvoreB(FILE *fpI, int key, int RRN)
     {
         criar_raiz(fpI, RRN_raiz, promo_key, promo_RRN, promo_r_child);
     }
+
+    recupera_cabecalho_arvoreB(regcb, fpI);
+    regcb->nroChaves++;
+    atualiza_cabecalho_arvoreB(regcb, fpI);
 }
 
 // relatorio - 7/7
@@ -342,11 +349,16 @@ void insercao_arvoreB(FILE *fpI, int key, int RRN)
  */
 void criar_raiz(FILE *fpI, int no_raiz, int promo_key, int promo_RRN, int promo_r_child)
 {
-    registro_dados *regdb = (registro_dados *)malloc(sizeof(registro_dados));
+    //printf("e vamos de nova raiz: ");
     registro_cabecalho *regcb = (registro_cabecalho *)malloc(sizeof(registro_cabecalho));
+    registro_dados *regdb = (registro_dados *)malloc(sizeof(registro_dados));
     int nova_raiz = criar_no(fpI); // RRN da nova raiz
+
+    //printf("foi de %d para %d\n", no_raiz, nova_raiz);
+
     recupera_cabecalho_arvoreB(regcb, fpI);
     recupera_pagina(regdb, fpI, nova_raiz);
+    regdb->nivel = ++regcb->nroNiveis;
     regdb->n++;
     regdb->C[0] = promo_key;
     regdb->PR[0] = promo_RRN;
@@ -407,6 +419,7 @@ void split(int i_key, int i_RRN, int i_r_child, registro_dados *page, int *promo
     page->C[4] = -1;
     page->PR[3] = -1;
     page->PR[4] = -1;
+    page->P[4] = -1;
     page->P[5] = -1;
 
     // Promove chave e cria nova página
@@ -425,11 +438,29 @@ void split(int i_key, int i_RRN, int i_r_child, registro_dados *page, int *promo
     {
         new_page->C[i - 4] = C_aux[i];
         new_page->PR[i - 4] = PR_aux[i];
+        new_page->P[i - 4] = P_aux[i];
     }
+    new_page->P[2] = P_aux[6];
+
+    //printf("SPLIT:\nnó antigo\n(%d) ", page->P[0]);
+    // for (int i = 0; i <= 4; i++)
+    // {
+        //printf("%d (%d) ", page->C[i], page->P[i+1]);
+    // }
+    //printf("\nnó novo\n(%d) ", new_page->P[0]);
+    // for (int i = 0; i <= 4; i++)
+    // {
+       // printf("%d (%d) ", new_page->C[i], new_page->P[i+1]);
+    // }
+    //printf("\n");
 }
 
 /**
  * DUVIDAS/PENDENCIAS DO MAL
+ * 
+ * 1 - status
+ * 
+ * 
  * 1- inserir ponteiros P no lugar certo
  * 2 - inicialzar nó???
  * 3 - busca - precisa do found_pos (acho q n provavelmente era pra versao anterior da inserção)
@@ -446,6 +477,3 @@ void split(int i_key, int i_RRN, int i_r_child, registro_dados *page, int *promo
  * split de nao no folha
  * ultimo ponteiro vira primeiro ponteiro do novo nó irmao
 */
-
-
- 

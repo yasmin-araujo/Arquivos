@@ -61,4 +61,4 @@ No pior caso a árvore apresentará o seguinte número de descendentes em cada n
 - ...
 - Nível d: 2 [m/2]<sup>d-1</sup>
 
-Assim, a complexidade fica como **N + 1 $\geq$ 2 * [m/2] <sup>d-1</sup>** e **d $\leq$ 1 + log<sub>[m/2]</sub>((N + 1)/2)**, sendo *N + 1* o número de chaves e descendentes e *d* a profundidade da árvore.
+Assim, a complexidade fica como **N + 1 >= 2 * [m/2] <sup>d-1</sup>** e **d <= 1 + log<sub>[m/2]</sub>((N + 1)/2)**, sendo *N + 1* o número de chaves e descendentes e *d* a profundidade da árvore.
